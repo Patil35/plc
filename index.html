@@ -1,85 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PLC Live Monitor</title>
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #121212;
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-    }
-    .card {
-      background: #1e1e1e;
-      padding: 2.5rem;
-      border-radius: 16px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-      text-align: center;
-      width: 320px;
-    }
-    .indicator {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      margin: 1.5rem auto;
-      background-color: #333333;
-      transition: background-color 0.3s, box-shadow 0.3s;
-    }
-    .indicator.active {
-      background-color: #00e676;
-      box-shadow: 0 0 24px #00e676;
-    }
-    .indicator.inactive {
-      background-color: #ff1744;
-      box-shadow: 0 0 24px #ff1744;
-    }
-    .status-text {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-    .meta {
-      font-size: 0.85rem;
-      color: #888888;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLC Live Public Monitor</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        
+        .card {
+            background: #1e1e1e;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 320px;
+        }
+        
+        .indicator {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 1.5rem auto;
+            background-color: #333333;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        
+        .indicator.active {
+            background-color: #00e676;
+            box-shadow: 0 0 24px #00e676;
+        }
+        
+        .indicator.inactive {
+            background-color: #ff1744;
+            box-shadow: 0 0 24px #ff1744;
+        }
+        
+        .status-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .meta {
+            font-size: 0.85rem;
+            color: #888888;
+        }
+    </style>
 </head>
+
 <body>
 
-  <div class="card">
-    <h2>PLC Input Status</h2>
-    <div id="indicator" class="indicator"></div>
-    <div id="status-text" class="status-text">WAITING...</div>
-    <div class="meta">Last Updated: <span id="timestamp">--:--:--</span></div>
-  </div>
+    <div class="card">
+        <h2>PLC Input Status</h2>
+        <div id="indicator" class="indicator"></div>
+        <div id="status-text" class="status-text">CONNECTING...</div>
+        <div class="meta">Last Updated: <span id="timestamp">--:--:--</span></div>
+    </div>
 
-  <script>
-    const socket = io();
-    const indicator = document.getElementById("indicator");
-    const statusText = document.getElementById("status-text");
-    const timestamp = document.getElementById("timestamp");
+    <script>
+        const AIO_USERNAME = "hitendravalhe";
+        const FEED_KEY = "plc-button-status";
 
-    socket.on("plc_update", function(data) {
-      timestamp.innerText = data.time;
-      if (data.status === "1") {
-        indicator.className = "indicator active";
-        statusText.innerText = "ON (1)";
-        statusText.style.color = "#00e676";
-      } else {
-        indicator.className = "indicator inactive";
-        statusText.innerText = "OFF (0)";
-        statusText.style.color = "#ff1744";
-      }
-    });
-  </script>
+        const indicator = document.getElementById("indicator");
+        const statusText = document.getElementById("status-text");
+        const timestamp = document.getElementById("timestamp");
+
+        async function fetchPLCStatus() {
+            try {
+                const url = `https://io.adafruit.com/api/v2/${AIO_USERNAME}/feeds/${FEED_KEY}/data/last`;
+                const res = await fetch(url);
+
+                if (!res.ok) {
+                    throw new Error("HTTP Status: " + res.status);
+                }
+
+                const data = await res.json();
+                const val = String(data.value).trim();
+                const time = new Date(data.created_at).toLocaleTimeString();
+
+                timestamp.innerText = time;
+
+                if (val === "1") {
+                    indicator.className = "indicator active";
+                    statusText.innerText = "ON (1)";
+                    statusText.style.color = "#00e676";
+                } else if (val === "0") {
+                    indicator.className = "indicator inactive";
+                    statusText.innerText = "OFF (0)";
+                    statusText.style.color = "#ff1744";
+                } else {
+                    statusText.innerText = "VAL: " + val;
+                    statusText.style.color = "#ffffff";
+                }
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                statusText.innerText = "WAITING / OFFLINE";
+                statusText.style.color = "#888888";
+            }
+        }
+
+        // Direct start ane dar 2 sec ma fetch
+        fetchPLCStatus();
+        setInterval(fetchPLCStatus, 2000);
+    </script>
 
 </body>
+
 </html>
